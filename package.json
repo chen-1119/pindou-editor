@@ -4,26 +4,20 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite -c pindou.config.js",
-    "build": "vite build -c pindou.config.js",
-    "preview": "vite preview -c pindou.config.js",
-    "start": "node server.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "serve": "^14.2.1",
-    "express": "^4.18.2"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react": "^4.0.3",
     "vite": "^4.4.5"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
