@@ -1,0 +1,101 @@
+.bead-stats {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* 允许无限收缩，内部列表会滚动 */
+    /* 确保标题栏不被压没 */
+    background: transparent;
+    padding: 16px;
+    overflow: hidden;
+}
+
+.stats-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 10px;
+}
+
+.stats-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.stats-total {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.stats-list {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stats-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    animation: fadeIn 0.3s ease;
+    transition: background var(--transition-fast);
+}
+
+.stats-no {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.stats-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.stats-color {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.stats-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.stats-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stats-code {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+.stats-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 32px;
+    text-align: right;
+}

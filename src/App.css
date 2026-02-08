@@ -1,0 +1,77 @@
+.app {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+}
+
+.canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    background-color: #e5e7eb;
+    /* 强制浅灰 */
+    background-image:
+        radial-gradient(rgba(139, 92, 246, 0.08) 1px, transparent 1px),
+        radial-gradient(rgba(139, 92, 246, 0.08) 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+}
+
+.sidebar-right {
+    width: 280px;
+    min-width: 280px;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    transition: width 0.3s ease;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
+    height: 100%;
+    /* 确保填满高度 */
+    overflow: hidden;
+    /* 内部组件自己处理滚动 */
+}
+
+.sidebar-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border-color), transparent);
+    /* 两端渐变消失 */
+    margin: 0 16px;
+}
+
+.app-footer {
+    height: 32px;
+    min-height: 32px;
+    background: transparent;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    z-index: 20;
+    user-select: none;
+    margin-top: auto;
+    /* 推到底部 */
+}
+
+/* 响应式调整 */
+@media (max-width: 1024px) {
+    .sidebar-right {
+        width: 240px;
+        min-width: 240px;
+    }
+}
