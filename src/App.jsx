@@ -5,6 +5,7 @@ import { Toolbar } from './components/Toolbar';
 import { ColorPalette } from './components/ColorPalette';
 import { Header } from './components/Header';
 import { ImportModal } from './components/ImportModal';
+import { DonationModal } from './components/DonationModal';
 import { BeadStats } from './components/BeadStats';
 import './App.css';
 
@@ -22,6 +23,7 @@ function App() {
     const canvas = useCanvas();
     const containerRef = useRef(null);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [showDonationModal, setShowDonationModal] = useState(false);
 
     // 计算颜色编号映射 (colorId -> number)
     const colorNumberMap = useMemo(() => {
@@ -218,7 +220,25 @@ function App() {
                     />
 
                     <footer className="app-footer sidebar-footer">
-                        © 2026 Pindou.Doki
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                            <button
+                                onClick={() => setShowDonationModal(true)}
+                                style={{
+                                    color: 'var(--accent-primary)',
+                                    fontWeight: 600,
+                                    background: 'rgba(139, 92, 246, 0.1)',
+                                    padding: '4px 12px',
+                                    borderRadius: '12px',
+                                    fontSize: '12px',
+                                    cursor: 'pointer',
+                                    border: '1px solid rgba(139, 92, 246, 0.2)',
+                                    marginBottom: '4px'
+                                }}
+                            >
+                                ❤️ 打赏支持/投喂
+                            </button>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>© 2026 Pindou.Doki</span>
+                        </div>
                     </footer>
                 </div>
             </div>
@@ -229,6 +249,11 @@ function App() {
                 gridWidth={canvas.gridWidth}
                 gridHeight={canvas.gridHeight}
                 onImport={handleImport}
+            />
+
+            <DonationModal
+                isOpen={showDonationModal}
+                onClose={() => setShowDonationModal(false)}
             />
         </div>
     );
