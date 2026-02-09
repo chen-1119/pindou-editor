@@ -1,24 +1,18 @@
-# 构建阶段
-FROM node:18-alpine AS builder
+FROM node:22-alpine AS build
+LABEL "language"="nodejs"
+LABEL "framework"="vite"
 
-WORKDIR /app
-COPY package.json package-lock.json ./
+WORKDIR /src
+
+COPY package*.json ./
 RUN npm install
+
 COPY . .
 RUN npm run build
 
-# 运行阶段 (使用 serve 静态服务)
-FROM node:18-alpine
+FROM zeabur/caddy-static
 
-WORKDIR /app
-# 全局安装 serve
-RUN npm install -g serve
+# 将构建出的 dist 目录复制到 Caddy 的默认服务目录
+COPY --from=build /src/dist /usr/share/caddy
 
-# 复制构建产物
-COPY --from=builder /app/dist ./dist
-
-# 暴露端口
 EXPOSE 8080
-
-# 启动命令 (强制监听 8080)
-CMD ["serve", "-s", "dist", "-l", "8080"]
