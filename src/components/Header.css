@@ -128,3 +128,94 @@
     background: rgba(255, 255, 255, 0.08);
     color: var(--text-primary);
 }
+
+/* ===== 移动端响应式 ===== */
+
+@media (max-width: 768px) {
+    .header {
+        height: 52px;
+        padding: 0 12px;
+        gap: 8px;
+    }
+
+    .logo-text {
+        font-size: 14px;
+    }
+
+    .logo-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* 隐藏中间的画布信息 */
+    .header-center {
+        display: none;
+    }
+
+    .header-right {
+        gap: 8px;
+    }
+
+    .header-btn {
+        height: 32px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
+
+    .header-btn span {
+        display: none;
+    }
+
+    .header-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .export-menu {
+        right: -12px;
+        min-width: 160px;
+    }
+
+    .export-option {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+    .header {
+        padding: 0 8px;
+    }
+
+    .logo {
+        gap: 6px;
+    }
+
+    .logo-text {
+        font-size: 13px;
+    }
+
+    .header-btn {
+        padding: 0 8px;
+    }
+
+    /* 设置按钮在超小屏幕隐藏 */
+    .header-btn:last-child {
+        display: none;
+    }
+}
+
+/* 安全区域处理 */
+@supports (padding-top: env(safe-area-inset-top)) {
+    .header {
+        padding-top: env(safe-area-inset-top);
+        height: calc(var(--header-height) + env(safe-area-inset-top));
+    }
+
+    @media (max-width: 768px) {
+        .header {
+            height: calc(52px + env(safe-area-inset-top));
+        }
+    }
+}

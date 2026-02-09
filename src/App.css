@@ -28,6 +28,38 @@
     background-position: 0 0, 10px 10px;
 }
 
+/* 侧边栏切换按钮 */
+.sidebar-toggle-btn {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
+    z-index: 100;
+    width: 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-right: none;
+    border-radius: 12px 0 0 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.1);
+    transition: all var(--transition-fast);
+    opacity: 0.8;
+}
+
+.sidebar-toggle-btn:hover {
+    width: 32px;
+    /* 悬浮时变宽 */
+    background: var(--bg-tertiary);
+    color: var(--accent-primary);
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
+    opacity: 1;
+}
+
 .sidebar-right {
     width: 280px;
     min-width: 280px;
@@ -36,12 +68,25 @@
     display: flex;
     flex-direction: column;
     z-index: 10;
-    transition: width 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
     height: 100%;
-    /* 确保填满高度 */
     overflow: hidden;
-    /* 内部组件自己处理滚动 */
+}
+
+.sidebar-right.closed {
+    width: 0;
+    min-width: 0;
+    border-left: none;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar-right.open {
+    width: 280px;
+    min-width: 280px;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .sidebar-divider {
@@ -101,10 +146,91 @@
     /* 推到底部 */
 }
 
-/* 响应式调整 */
+/* ===== 响应式设计 - 移动端 ===== */
+
+/* 平板端调整 */
 @media (max-width: 1024px) {
-    .sidebar-right {
+    .sidebar-right.open {
         width: 240px;
         min-width: 240px;
+    }
+}
+
+/* 移动端布局 */
+@media (max-width: 768px) {
+    .app {
+        height: 100dvh;
+        /* 使用动态视口高度 */
+    }
+
+    .main-content {
+        flex-direction: column;
+    }
+
+    /* 侧边栏在移动端作为浮层显示 */
+    .sidebar-right {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 85%;
+        max-width: 320px;
+        height: 100dvh;
+        z-index: 1000;
+        transform: translateX(100%);
+        box-shadow: -8px 0 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .sidebar-right.closed {
+        transform: translateX(100%);
+        opacity: 1;
+        width: 85%;
+        min-width: 85%;
+    }
+
+    .sidebar-right.open {
+        transform: translateX(0);
+        width: 85%;
+        min-width: unset;
+        max-width: 320px;
+    }
+
+    .sidebar-toggle-btn {
+        top: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        transform: none;
+        border-radius: var(--radius-md);
+        border-right: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        box-shadow: var(--shadow-sm);
+        opacity: 1;
+    }
+
+    /* 移动端侧边栏遮罩层 */
+    .app.mobile .sidebar-right.open::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: -1;
+        backdrop-filter: blur(2px);
+    }
+}
+
+/* 超小屏幕调整 */
+@media (max-width: 480px) {
+    .sidebar-right.open {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .sidebar-toggle-btn {
+        top: 8px;
+        right: 8px;
     }
 }

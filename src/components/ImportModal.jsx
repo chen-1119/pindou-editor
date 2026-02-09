@@ -1,18 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, X, Check, Image, Wand2, RotateCcw, Sparkles, Loader2, Settings } from 'lucide-react';
+import { Upload, X, Check, Image, Wand2, RotateCcw } from 'lucide-react';
 import { BEAD_COLORS } from '../data/beadColors';
 import './ImportModal.css';
-
-// 动态导入去背景库
-let removeBackground = null;
-
-async function loadRemoveBackground() {
-    if (!removeBackground) {
-        const module = await import('@imgly/background-removal');
-        removeBackground = module.removeBackground;
-    }
-    return removeBackground;
-}
 
 // 颜色工具函数
 function hexToRgb(hex) {
@@ -31,31 +20,141 @@ function rgbToHex(r, g, b) {
     }).join('');
 }
 
-function colorDistance(hex1, hex2) {
-    const rgb1 = hexToRgb(hex1);
-    const rgb2 = hexToRgb(hex2);
-    const rMean = (rgb1.r + rgb2.r) / 2;
-    const dR = rgb1.r - rgb2.r;
-    const dG = rgb1.g - rgb2.g;
-    const dB = rgb1.b - rgb2.b;
+// RGB 转 Lab 色彩空间（更符合人眼感知）
+function rgbToLab(r, g, b) {
+    // RGB 转 XYZ
+    let rr = r / 255;
+    let gg = g / 255;
+    let bb = b / 255;
+
+    rr = rr > 0.04045 ? Math.pow((rr + 0.055) / 1.055, 2.4) : rr / 12.92;
+    gg = gg > 0.04045 ? Math.pow((gg + 0.055) / 1.055, 2.4) : gg / 12.92;
+    bb = bb > 0.04045 ? Math.pow((bb + 0.055) / 1.055, 2.4) : bb / 12.92;
+
+    const x = (rr * 0.4124564 + gg * 0.3575761 + bb * 0.1804375) / 0.95047;
+    const y = (rr * 0.2126729 + gg * 0.7151522 + bb * 0.0721750);
+    const z = (rr * 0.0193339 + gg * 0.1191920 + bb * 0.9503041) / 1.08883;
+
+    // XYZ 转 Lab
+    const fx = x > 0.008856 ? Math.pow(x, 1 / 3) : (7.787 * x) + 16 / 116;
+    const fy = y > 0.008856 ? Math.pow(y, 1 / 3) : (7.787 * y) + 16 / 116;
+    const fz = z > 0.008856 ? Math.pow(z, 1 / 3) : (7.787 * z) + 16 / 116;
+
+    return {
+        L: (116 * fy) - 16,
+        a: 500 * (fx - fy),
+        b: 200 * (fy - fz)
+    };
+}
+
+// CIE Delta E 2000 颜色差异算法（最精确）
+function deltaE2000(lab1, lab2) {
+    const L1 = lab1.L, a1 = lab1.a, b1 = lab1.b;
+    const L2 = lab2.L, a2 = lab2.a, b2 = lab2.b;
+
+    const kL = 1, kC = 1, kH = 1;
+    const deg2rad = Math.PI / 180;
+
+    const C1 = Math.sqrt(a1 * a1 + b1 * b1);
+    const C2 = Math.sqrt(a2 * a2 + b2 * b2);
+    const Cavg = (C1 + C2) / 2;
+    const Cavg7 = Math.pow(Cavg, 7);
+    const G = 0.5 * (1 - Math.sqrt(Cavg7 / (Cavg7 + Math.pow(25, 7))));
+
+    const a1p = a1 * (1 + G);
+    const a2p = a2 * (1 + G);
+    const C1p = Math.sqrt(a1p * a1p + b1 * b1);
+    const C2p = Math.sqrt(a2p * a2p + b2 * b2);
+
+    let h1p = Math.atan2(b1, a1p) * 180 / Math.PI;
+    if (h1p < 0) h1p += 360;
+    let h2p = Math.atan2(b2, a2p) * 180 / Math.PI;
+    if (h2p < 0) h2p += 360;
+
+    const dLp = L2 - L1;
+    const dCp = C2p - C1p;
+
+    let dhp;
+    if (C1p * C2p === 0) {
+        dhp = 0;
+    } else if (Math.abs(h2p - h1p) <= 180) {
+        dhp = h2p - h1p;
+    } else if (h2p - h1p > 180) {
+        dhp = h2p - h1p - 360;
+    } else {
+        dhp = h2p - h1p + 360;
+    }
+
+    const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin(dhp * deg2rad / 2);
+
+    const Lp = (L1 + L2) / 2;
+    const Cp = (C1p + C2p) / 2;
+
+    let Hp;
+    if (C1p * C2p === 0) {
+        Hp = h1p + h2p;
+    } else if (Math.abs(h1p - h2p) <= 180) {
+        Hp = (h1p + h2p) / 2;
+    } else if (h1p + h2p < 360) {
+        Hp = (h1p + h2p + 360) / 2;
+    } else {
+        Hp = (h1p + h2p - 360) / 2;
+    }
+
+    const T = 1 - 0.17 * Math.cos((Hp - 30) * deg2rad)
+        + 0.24 * Math.cos(2 * Hp * deg2rad)
+        + 0.32 * Math.cos((3 * Hp + 6) * deg2rad)
+        - 0.20 * Math.cos((4 * Hp - 63) * deg2rad);
+
+    const dTheta = 30 * Math.exp(-Math.pow((Hp - 275) / 25, 2));
+    const Cp7 = Math.pow(Cp, 7);
+    const RC = 2 * Math.sqrt(Cp7 / (Cp7 + Math.pow(25, 7)));
+    const Lp50sq = Math.pow(Lp - 50, 2);
+    const SL = 1 + 0.015 * Lp50sq / Math.sqrt(20 + Lp50sq);
+    const SC = 1 + 0.045 * Cp;
+    const SH = 1 + 0.015 * Cp * T;
+    const RT = -Math.sin(2 * dTheta * deg2rad) * RC;
+
     return Math.sqrt(
-        (2 + rMean / 256) * dR * dR +
-        4 * dG * dG +
-        (2 + (255 - rMean) / 256) * dB * dB
+        Math.pow(dLp / (kL * SL), 2)
+        + Math.pow(dCp / (kC * SC), 2)
+        + Math.pow(dHp / (kH * SH), 2)
+        + RT * (dCp / (kC * SC)) * (dHp / (kH * SH))
     );
 }
 
-function findClosestBeadColor(hex) {
+// 预计算所有拼豆颜色的 Lab 值
+const BEAD_COLORS_LAB = BEAD_COLORS.map(color => {
+    const rgb = hexToRgb(color.hex);
+    return {
+        ...color,
+        lab: rgbToLab(rgb.r, rgb.g, rgb.b)
+    };
+});
+
+// 使用 Lab 色彩空间查找最接近的拼豆颜色 (直接使用 RGB)
+function findClosestBeadColorFromRgb(r, g, b) {
+    const lab = rgbToLab(r, g, b);
+
     let minDistance = Infinity;
     let closestColor = BEAD_COLORS[0];
-    for (const beadColor of BEAD_COLORS) {
-        const distance = colorDistance(hex, beadColor.hex);
+
+    for (let i = 0; i < BEAD_COLORS_LAB.length; i++) {
+        const beadColor = BEAD_COLORS_LAB[i];
+        const distance = deltaE2000(lab, beadColor.lab);
         if (distance < minDistance) {
             minDistance = distance;
             closestColor = beadColor;
         }
     }
+
     return closestColor;
+}
+
+// 保持兼容性
+function findClosestBeadColor(hex) {
+    const rgb = hexToRgb(hex);
+    return findClosestBeadColorFromRgb(rgb.r, rgb.g, rgb.b);
 }
 
 function rgbDistance(r1, g1, b1, r2, g2, b2) {
@@ -64,15 +163,6 @@ function rgbDistance(r1, g1, b1, r2, g2, b2) {
         Math.pow(g1 - g2, 2) +
         Math.pow(b1 - b2, 2)
     );
-}
-
-// 从 localStorage 获取 API Key
-function getRemoveBgApiKey() {
-    return localStorage.getItem('removebg_api_key') || '';
-}
-
-function setRemoveBgApiKey(key) {
-    localStorage.setItem('removebg_api_key', key);
 }
 
 export function ImportModal({
@@ -92,14 +182,12 @@ export function ImportModal({
 
     const [imageData, setImageData] = useState(null);
     const [maskData, setMaskData] = useState(null);
-    const [tolerance, setTolerance] = useState(30);
+    const [tolerance, setTolerance] = useState(15); // 降低默认容差，避免误删主体
     const [isRemoveMode, setIsRemoveMode] = useState(false);
-    const [isAIProcessing, setIsAIProcessing] = useState(false);
-    const [aiProgress, setAiProgress] = useState('');
-    const [showApiSettings, setShowApiSettings] = useState(false);
-    const [apiKey, setApiKey] = useState(getRemoveBgApiKey());
+    const [isDragging, setIsDragging] = useState(false);
     const previewCanvasRef = useRef(null);
     const originalFile = useRef(null);
+    const dragCounterRef = useRef(0);
 
     // 更新预览画布
     useEffect(() => {
@@ -181,109 +269,110 @@ export function ImportModal({
         reader.readAsDataURL(selectedFile);
     };
 
-    // 使用 Remove.bg API（效果最好）
-    const removeBgApi = async () => {
-        if (!originalFile.current || !apiKey) {
-            setShowApiSettings(true);
-            return;
-        }
-
-        setIsAIProcessing(true);
-        setAiProgress('正在调用 Remove.bg API...');
-
+    // 处理拖拽文件
+    const processFile = (fileToProcess) => {
         try {
-            const formData = new FormData();
-            formData.append('image_file', originalFile.current);
-            formData.append('size', 'auto');
-
-            const response = await fetch('https://api.remove.bg/v1.0/removebg', {
-                method: 'POST',
-                headers: {
-                    'X-Api-Key': apiKey
-                },
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.errors?.[0]?.title || 'API 请求失败');
+            if (!fileToProcess) {
+                console.error('没有文件');
+                return;
             }
 
-            const blob = await response.blob();
-            applyResultBlob(blob);
+            if (!fileToProcess.type || !fileToProcess.type.startsWith('image/')) {
+                alert('请拖入图片文件');
+                return;
+            }
 
-        } catch (error) {
-            console.error('Remove.bg API 失败:', error);
-            setAiProgress('');
-            setIsAIProcessing(false);
-            alert('Remove.bg API 失败: ' + error.message + '\n请检查 API Key 是否正确');
-        }
-    };
+            setFile(fileToProcess);
+            originalFile.current = fileToProcess;
 
-    // 本地 AI 去背景（优化参数）
-    const aiRemoveBackground = async () => {
-        if (!originalFile.current) return;
+            const reader = new FileReader();
+            reader.onerror = () => {
+                console.error('文件读取失败');
+                alert('文件读取失败，请重试');
+            };
+            reader.onload = (event) => {
+                const img = new window.Image();
+                img.onerror = () => {
+                    console.error('图片加载失败');
+                    alert('图片加载失败，请使用其他格式');
+                };
+                img.onload = () => {
+                    try {
+                        setPreview(event.target.result);
+                        setOriginalRatio(img.width / img.height);
 
-        setIsAIProcessing(true);
-        setAiProgress('正在加载 AI 模型...');
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        const data = ctx.getImageData(0, 0, img.width, img.height);
+                        setImageData(data);
 
-        try {
-            const removeBg = await loadRemoveBackground();
+                        const mask = new Uint8Array(img.width * img.height);
+                        mask.fill(255);
+                        setMaskData(mask);
 
-            setAiProgress('AI 正在分析图片...');
-
-            const blob = await removeBg(originalFile.current, {
-                model: 'medium', // 使用中等模型，平衡速度和质量
-                output: {
-                    format: 'image/png',
-                    quality: 1 // 最高质量
-                },
-                progress: (key, current, total) => {
-                    if (key === 'compute:inference') {
-                        setAiProgress(`AI 处理中... ${Math.round((current / total) * 100)}%`);
-                    } else if (key === 'fetch:model') {
-                        setAiProgress(`下载模型... ${Math.round((current / total) * 100)}%`);
+                        const maxSize = 80;
+                        if (img.width > img.height) {
+                            setTargetWidth(maxSize);
+                            setTargetHeight(Math.round(maxSize / (img.width / img.height)));
+                        } else {
+                            setTargetHeight(maxSize);
+                            setTargetWidth(Math.round(maxSize * (img.width / img.height)));
+                        }
+                    } catch (err) {
+                        console.error('图片处理失败:', err);
+                        alert('图片处理失败，请重试');
                     }
-                }
-            });
-
-            applyResultBlob(blob);
-
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(fileToProcess);
         } catch (error) {
-            console.error('本地 AI 去背景失败:', error);
-            setAiProgress('');
-            setIsAIProcessing(false);
-            alert('AI 去背景失败，请尝试其他方法');
+            console.error('processFile 错误:', error);
+            alert('处理文件时出错，请重试');
         }
     };
 
-    // 应用去背景结果
-    const applyResultBlob = (blob) => {
-        setAiProgress('正在应用结果...');
+    // 拖拽事件处理
+    const handleDragEnter = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current++;
+        if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+            setIsDragging(true);
+        }
+    };
 
-        const img = new window.Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            const newData = ctx.getImageData(0, 0, img.width, img.height);
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounterRef.current--;
+        if (dragCounterRef.current === 0) {
+            setIsDragging(false);
+        }
+    };
 
-            setImageData(newData);
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
 
-            const newMask = new Uint8Array(img.width * img.height);
-            for (let i = 0; i < newData.data.length; i += 4) {
-                newMask[i / 4] = newData.data[i + 3] > 128 ? 255 : 0;
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        dragCounterRef.current = 0;
+
+        try {
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                const droppedFile = e.dataTransfer.files[0];
+                processFile(droppedFile);
             }
-            setMaskData(newMask);
-
-            setAiProgress('');
-            setIsAIProcessing(false);
-
-            URL.revokeObjectURL(img.src);
-        };
-        img.src = URL.createObjectURL(blob);
+        } catch (error) {
+            console.error('拖拽处理失败:', error);
+        }
     };
 
     // 边缘检测去背景
@@ -330,7 +419,8 @@ export function ImportModal({
 
             const i = pixelIndex * 4;
             const dist = rgbDistance(imageData.data[i], imageData.data[i + 1], imageData.data[i + 2], bgR, bgG, bgB);
-            if (dist > tolerance * 3.5) continue;
+            // 降低容差系数，更保守地去除背景
+            if (dist > tolerance * 2.5) continue;
 
             visited.add(key);
             newMask[pixelIndex] = 0;
@@ -373,7 +463,8 @@ export function ImportModal({
 
             const i = pixelIndex * 4;
             const dist = rgbDistance(imageData.data[i], imageData.data[i + 1], imageData.data[i + 2], targetR, targetG, targetB);
-            if (dist > tolerance * 2.5) continue;
+            // 降低容差系数，手动模式更精确
+            if (dist > tolerance * 2) continue;
 
             visited.add(key);
             newMask[pixelIndex] = 0;
@@ -428,11 +519,7 @@ export function ImportModal({
         setIsProcessing(true);
 
         try {
-            const tempCanvas = document.createElement('canvas');
-            const ctx = tempCanvas.getContext('2d');
-            tempCanvas.width = targetWidth;
-            tempCanvas.height = targetHeight;
-
+            // 创建带遮罩的源图像
             const maskedCanvas = document.createElement('canvas');
             maskedCanvas.width = imageData.width;
             maskedCanvas.height = imageData.height;
@@ -452,7 +539,37 @@ export function ImportModal({
             }
             maskedCtx.putImageData(maskedImageData, 0, 0);
 
-            ctx.drawImage(maskedCanvas, 0, 0, targetWidth, targetHeight);
+            // 高质量多步缩放（逐步减半，减少失真）
+            let currentCanvas = maskedCanvas;
+            let currentWidth = imageData.width;
+            let currentHeight = imageData.height;
+
+            // 当源尺寸大于目标尺寸的2倍时，逐步缩小
+            while (currentWidth > targetWidth * 2 || currentHeight > targetHeight * 2) {
+                const newWidth = Math.max(targetWidth, Math.floor(currentWidth / 2));
+                const newHeight = Math.max(targetHeight, Math.floor(currentHeight / 2));
+
+                const stepCanvas = document.createElement('canvas');
+                stepCanvas.width = newWidth;
+                stepCanvas.height = newHeight;
+                const stepCtx = stepCanvas.getContext('2d');
+                stepCtx.imageSmoothingEnabled = true;
+                stepCtx.imageSmoothingQuality = 'high';
+                stepCtx.drawImage(currentCanvas, 0, 0, newWidth, newHeight);
+
+                currentCanvas = stepCanvas;
+                currentWidth = newWidth;
+                currentHeight = newHeight;
+            }
+
+            // 最终缩放到目标尺寸
+            const tempCanvas = document.createElement('canvas');
+            const ctx = tempCanvas.getContext('2d');
+            tempCanvas.width = targetWidth;
+            tempCanvas.height = targetHeight;
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(currentCanvas, 0, 0, targetWidth, targetHeight);
 
             const finalData = ctx.getImageData(0, 0, targetWidth, targetHeight).data;
 
@@ -468,8 +585,7 @@ export function ImportModal({
 
                     if (a < 128) continue;
 
-                    const hex = rgbToHex(r, g, b);
-                    const beadColor = findClosestBeadColor(hex);
+                    const beadColor = findClosestBeadColorFromRgb(r, g, b);
 
                     pixels[x + ',' + y] = {
                         colorId: beadColor.id,
@@ -494,9 +610,6 @@ export function ImportModal({
         setImageData(null);
         setMaskData(null);
         setIsRemoveMode(false);
-        setIsAIProcessing(false);
-        setAiProgress('');
-        setShowApiSettings(false);
         originalFile.current = null;
         onClose();
     };
@@ -508,14 +621,6 @@ export function ImportModal({
         setMaskData(null);
         setIsRemoveMode(false);
         originalFile.current = null;
-    };
-
-    const saveApiKey = () => {
-        setRemoveBgApiKey(apiKey);
-        setShowApiSettings(false);
-        if (apiKey) {
-            removeBgApi();
-        }
     };
 
     const remainingPixels = maskData ? maskData.filter(v => v > 0).length : 0;
@@ -534,7 +639,13 @@ export function ImportModal({
 
                 <div className="modal-body">
                     {!preview ? (
-                        <label className="upload-area">
+                        <label
+                            className={`upload-area ${isDragging ? 'dragging' : ''}`}
+                            onDragEnter={handleDragEnter}
+                            onDragLeave={handleDragLeave}
+                            onDragOver={handleDragOver}
+                            onDrop={handleDrop}
+                        >
                             <input
                                 type="file"
                                 accept="image/*"
@@ -542,7 +653,9 @@ export function ImportModal({
                                 hidden
                             />
                             <Upload size={48} className="upload-icon" />
-                            <span className="upload-text">点击或拖拽图片到此处</span>
+                            <span className="upload-text">
+                                {isDragging ? '松开鼠标放置图片' : '点击或拖拽图片到此处'}
+                            </span>
                             <span className="upload-hint">支持 PNG (透明背景), JPG, GIF</span>
                         </label>
                     ) : (
@@ -559,85 +672,30 @@ export function ImportModal({
                                             cursor: isRemoveMode ? 'crosshair' : 'default'
                                         }}
                                     />
-                                    {isAIProcessing && (
-                                        <div className="ai-loading-overlay">
-                                            <Loader2 size={32} className="spin" />
-                                            <span>{aiProgress}</span>
-                                        </div>
-                                    )}
                                 </div>
 
-                                {showApiSettings ? (
-                                    <div className="api-settings">
-                                        <div className="api-settings-header">
-                                            <span>Remove.bg API Key</span>
-                                            <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer">
-                                                获取免费 Key
-                                            </a>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            placeholder="输入你的 API Key..."
-                                            value={apiKey}
-                                            onChange={(e) => setApiKey(e.target.value)}
-                                            className="api-key-input"
-                                        />
-                                        <div className="api-settings-actions">
-                                            <button className="tool-btn" onClick={() => setShowApiSettings(false)}>取消</button>
-                                            <button className="tool-btn primary" onClick={saveApiKey}>保存并使用</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="remove-tools">
-                                        <button
-                                            className="tool-btn api-btn"
-                                            onClick={removeBgApi}
-                                            disabled={isAIProcessing}
-                                            title="使用 Remove.bg API（效果最好）"
-                                        >
-                                            <Sparkles size={16} />
-                                            <span>Remove.bg</span>
-                                        </button>
+                                <div className="remove-tools">
+                                    <button
+                                        className="tool-btn primary"
+                                        onClick={simpleRemoveBackground}
+                                        title="智能去背景（边缘检测）"
+                                    >
+                                        <Wand2 size={16} />
+                                        <span>去背景</span>
+                                    </button>
 
-                                        <button
-                                            className="tool-btn ai-btn"
-                                            onClick={aiRemoveBackground}
-                                            disabled={isAIProcessing}
-                                            title="本地 AI（无需网络）"
-                                        >
-                                            <Sparkles size={16} />
-                                            <span>本地AI</span>
-                                        </button>
+                                    <button
+                                        className={`tool-btn ${isRemoveMode ? 'active' : ''}`}
+                                        onClick={() => setIsRemoveMode(!isRemoveMode)}
+                                        title="手动点击移除"
+                                    >
+                                        <span>手动</span>
+                                    </button>
 
-                                        <button
-                                            className="tool-btn"
-                                            onClick={simpleRemoveBackground}
-                                            title="快速去背景"
-                                        >
-                                            <Wand2 size={16} />
-                                        </button>
-
-                                        <button
-                                            className={`tool-btn ${isRemoveMode ? 'active' : ''}`}
-                                            onClick={() => setIsRemoveMode(!isRemoveMode)}
-                                            title="手动点击移除"
-                                        >
-                                            <span>手动</span>
-                                        </button>
-
-                                        <button className="tool-btn" onClick={resetMask} title="重置">
-                                            <RotateCcw size={16} />
-                                        </button>
-
-                                        <button
-                                            className="tool-btn settings-btn"
-                                            onClick={() => setShowApiSettings(true)}
-                                            title="API 设置"
-                                        >
-                                            <Settings size={16} />
-                                        </button>
-                                    </div>
-                                )}
+                                    <button className="tool-btn" onClick={resetMask} title="重置">
+                                        <RotateCcw size={16} />
+                                    </button>
+                                </div>
 
                                 {isRemoveMode && (
                                     <div className="tolerance-section">
@@ -666,38 +724,67 @@ export function ImportModal({
                             </div>
 
                             <div className="size-controls">
-                                <div className="size-input">
-                                    <label>宽度</label>
-                                    <input
-                                        type="number"
-                                        value={targetWidth}
-                                        onChange={(e) => handleWidthChange(e.target.value)}
-                                        min="1"
-                                        max="128"
-                                    />
+                                <div className="size-presets">
+                                    <span className="preset-label">快捷尺寸:</span>
+                                    {[20, 30, 40, 60, 80].map(size => (
+                                        <button
+                                            key={size}
+                                            className={`preset-btn ${targetWidth === size || targetHeight === size ? 'active' : ''}`}
+                                            onClick={() => {
+                                                if (originalRatio >= 1) {
+                                                    setTargetWidth(size);
+                                                    setTargetHeight(Math.round(size / originalRatio));
+                                                } else {
+                                                    setTargetHeight(size);
+                                                    setTargetWidth(Math.round(size * originalRatio));
+                                                }
+                                            }}
+                                        >
+                                            {size}
+                                        </button>
+                                    ))}
                                 </div>
-                                <div className="size-input">
-                                    <label>高度</label>
-                                    <input
-                                        type="number"
-                                        value={targetHeight}
-                                        onChange={(e) => handleHeightChange(e.target.value)}
-                                        min="1"
-                                        max="128"
-                                    />
+                                <div className="size-inputs-row">
+                                    <div className="size-input">
+                                        <label>宽度</label>
+                                        <input
+                                            type="number"
+                                            value={targetWidth}
+                                            onChange={(e) => handleWidthChange(e.target.value)}
+                                            min="1"
+                                            max="128"
+                                        />
+                                    </div>
+                                    <div className="size-input">
+                                        <label>高度</label>
+                                        <input
+                                            type="number"
+                                            value={targetHeight}
+                                            onChange={(e) => handleHeightChange(e.target.value)}
+                                            min="1"
+                                            max="128"
+                                        />
+                                    </div>
+                                    <label className="ratio-toggle">
+                                        <input
+                                            type="checkbox"
+                                            checked={keepRatio}
+                                            onChange={(e) => setKeepRatio(e.target.checked)}
+                                        />
+                                        <span>保持比例</span>
+                                    </label>
                                 </div>
-                                <label className="ratio-toggle">
-                                    <input
-                                        type="checkbox"
-                                        checked={keepRatio}
-                                        onChange={(e) => setKeepRatio(e.target.checked)}
-                                    />
-                                    <span>保持比例</span>
-                                </label>
                             </div>
 
                             <div className="info-text">
-                                将生成 {targetWidth} × {targetHeight} = {targetWidth * targetHeight} 个拼豆（透明区域除外）
+                                {(() => {
+                                    const totalBeads = targetWidth * targetHeight;
+                                    const keepRatio = remainingPixels / totalPixels;
+                                    const actualBeads = totalPixels > 0 ? Math.round(totalBeads * keepRatio) : totalBeads;
+                                    return removedPercent > 0
+                                        ? `将生成约 ${actualBeads} 个拼豆（${targetWidth}×${targetHeight}，已去除${removedPercent}%背景）`
+                                        : `将生成 ${totalBeads} 个拼豆（${targetWidth}×${targetHeight}）`;
+                                })()}
                             </div>
 
                             <button className="change-file-btn" onClick={handleReset}>
@@ -713,7 +800,7 @@ export function ImportModal({
                     <button
                         className="confirm-btn"
                         onClick={handleImport}
-                        disabled={!imageData || isProcessing || isAIProcessing}
+                        disabled={!imageData || isProcessing}
                     >
                         {isProcessing ? '处理中...' : '确认导入'}
                         {!isProcessing && <Check size={16} />}

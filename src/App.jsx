@@ -7,6 +7,8 @@ import { Header } from './components/Header';
 import { ImportModal } from './components/ImportModal';
 import { DonationModal } from './components/DonationModal';
 import { BeadStats } from './components/BeadStats';
+import { BEAD_COLORS } from './data/beadColors';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import './App.css';
 
 // 颜色工具函数
@@ -24,18 +26,25 @@ function App() {
     const containerRef = useRef(null);
     const [showImportModal, setShowImportModal] = useState(false);
     const [showDonationModal, setShowDonationModal] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isMobile, setIsMobile] = useState(false);
 
-    // 计算颜色编号映射 (colorId -> number)
+    // 计算颜色编号映射 (colorId -> 拼豆code，如M113)
     const colorNumberMap = useMemo(() => {
+        // 导入颜色数据
+        const getColorCode = (colorId) => {
+            const color = BEAD_COLORS.find(c => c.id === colorId);
+            return color?.code || colorId; // 如果找不到就用colorId作为备用
+        };
+
         const uniqueColorIds = new Set();
         Object.values(canvas.pixels).forEach(p => {
             if (p.colorId) uniqueColorIds.add(p.colorId);
         });
 
         const map = {};
-        // 排序以确保编号稳定，例如按字母顺序
-        Array.from(uniqueColorIds).sort().forEach((id, index) => {
-            map[id] = index + 1;
+        Array.from(uniqueColorIds).forEach(id => {
+            map[id] = getColorCode(id); // 使用拼豆的code
         });
         return map;
     }, [canvas.pixels]);
@@ -46,6 +55,12 @@ function App() {
             if (containerRef.current) {
                 const { clientWidth, clientHeight } = containerRef.current;
                 canvas.centerCanvas(clientWidth, clientHeight);
+            }
+            // 检测是否为移动端
+            const mobile = window.innerWidth <= 768;
+            setIsMobile(mobile);
+            if (mobile) {
+                setIsSidebarOpen(false); // 移动端默认关闭侧边栏
             }
         };
 
@@ -89,11 +104,22 @@ function App() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [canvas]);
 
+    // 侧边栏切换时重新居中
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (containerRef.current) {
+                const { clientWidth, clientHeight } = containerRef.current;
+                canvas.centerCanvas(clientWidth, clientHeight);
+            }
+        }, 350); // 等待过渡动画结束
+        return () => clearTimeout(timer);
+    }, [isSidebarOpen, canvas.centerCanvas]);
+
     // 导出图片
     const handleExportImage = useCallback((format) => {
         if (format === 'png') {
             const exportCanvas = document.createElement('canvas');
-            const size = 20;
+            const size = 30; // 增大像素尺寸以提高清晰度
             exportCanvas.width = canvas.gridWidth * size;
             exportCanvas.height = canvas.gridHeight * size;
             const ctx = exportCanvas.getContext('2d');
@@ -109,17 +135,28 @@ function App() {
 
                 // 如果开启了显示编号，导出时也显示
                 if (canvas.showNumbers && pixel.colorId && colorNumberMap[pixel.colorId]) {
-                    const rgb = pixel.hex ? hexToRgb(pixel.hex) : { r: 128, g: 128, b: 128 };
-                    const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
-                    ctx.fillStyle = brightness > 128 ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)';
-
-                    const fontSize = 10;
+                    const label = colorNumberMap[pixel.colorId];
+                    // 根据code长度调整字体大小（M113是4字符）
+                    const fontSize = label.length > 3 ? 9 : 10;
                     ctx.font = `bold ${fontSize}px Arial`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
 
-                    const label = colorNumberMap[pixel.colorId].toString();
-                    ctx.fillText(label, x * size + size / 2, y * size + size / 2);
+                    const centerX = x * size + size / 2;
+                    const centerY = y * size + size / 2;
+
+                    // 添加描边使文字在任何背景上都清晰
+                    const rgb = pixel.hex ? hexToRgb(pixel.hex) : { r: 128, g: 128, b: 128 };
+                    const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+
+                    // 描边颜色（与填充相反）
+                    ctx.strokeStyle = brightness > 128 ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeText(label, centerX, centerY);
+
+                    // 填充颜色
+                    ctx.fillStyle = brightness > 128 ? 'rgba(0,0,0,0.95)' : 'rgba(255,255,255,1)';
+                    ctx.fillText(label, centerX, centerY);
                 }
             });
 
@@ -157,7 +194,7 @@ function App() {
     }, [canvas]);
 
     return (
-        <div className="app" ref={containerRef}>
+        <div className={`app ${isMobile ? 'mobile' : ''}`} ref={containerRef}>
             <Header
                 gridWidth={canvas.gridWidth}
                 gridHeight={canvas.gridHeight}
@@ -165,6 +202,7 @@ function App() {
                 onExportImage={handleExportImage}
                 onOpenSettings={() => { }}
                 onOpenImport={() => setShowImportModal(true)}
+                isMobile={isMobile}
             />
 
             <div className="main-content">
@@ -186,6 +224,14 @@ function App() {
                 />
 
                 <div className="canvas-area" ref={containerRef}>
+                    {/* 侧边栏切换按钮 */}
+                    <button
+                        className="sidebar-toggle-btn"
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        title={isSidebarOpen ? '收起侧边栏' : '展开侧边栏'}
+                    >
+                        {isSidebarOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+                    </button>
                     <Canvas
                         gridWidth={canvas.gridWidth}
                         gridHeight={canvas.gridHeight}
@@ -208,7 +254,7 @@ function App() {
                     />
                 </div>
 
-                <div className="sidebar-right glass">
+                <div className={`sidebar-right glass ${isSidebarOpen ? 'open' : 'closed'}`}>
                     <ColorPalette
                         currentColor={canvas.currentColor}
                         onColorChange={canvas.setCurrentColor}

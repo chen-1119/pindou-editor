@@ -20,11 +20,12 @@ export function BeadStats({ pixels, colorNumberMap }) {
         counts[pixel.colorId].count++;
     });
 
-    // 按编号排序，这样用户查找 No.1, No.2 更方便
+    // 按编号排序（按code字符串排序，如M01, M02... M100）
     const sortedCounts = Object.values(counts).sort((a, b) => {
-        const numA = colorNumberMap?.[a.colorId] || 999;
-        const numB = colorNumberMap?.[b.colorId] || 999;
-        return numA - numB;
+        const codeA = colorNumberMap?.[a.colorId] || 'ZZZ999';
+        const codeB = colorNumberMap?.[b.colorId] || 'ZZZ999';
+        // 自然排序（M1 < M2 < M10）
+        return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
     });
 
     const totalCount = sortedCounts.reduce((sum, item) => sum + item.count, 0);

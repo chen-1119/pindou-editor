@@ -104,3 +104,112 @@
     opacity: 1;
     visibility: visible;
 }
+
+/* ===== 移动端响应式布局 ===== */
+
+@media (max-width: 768px) {
+    .toolbar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        margin: 0;
+        padding: 8px 12px;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-around;
+        gap: 4px;
+        z-index: 100;
+        overflow-x: auto;
+        overflow-y: hidden;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        /* 隐藏滚动条 */
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .toolbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .toolbar-section {
+        flex-direction: row;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .toolbar-title {
+        display: none;
+    }
+
+    .toolbar-tools {
+        flex-direction: row;
+        gap: 4px;
+    }
+
+    .toolbar-btn {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+    }
+
+    .toolbar-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .toolbar-divider {
+        width: 1px;
+        height: 32px;
+        margin: 0 4px;
+    }
+
+    /* 移动端禁用 tooltip */
+    .toolbar-btn::after {
+        display: none;
+    }
+}
+
+/* 超小屏幕 */
+@media (max-width: 480px) {
+    .toolbar {
+        padding: 6px 8px;
+        gap: 2px;
+    }
+
+    .toolbar-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .toolbar-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .toolbar-section {
+        gap: 2px;
+    }
+
+    .toolbar-tools {
+        gap: 2px;
+    }
+
+    .toolbar-divider {
+        height: 28px;
+        margin: 0 2px;
+    }
+}
+
+/* 安全区域处理 (iPhone X 等) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    @media (max-width: 768px) {
+        .toolbar {
+            padding-bottom: calc(8px + env(safe-area-inset-bottom));
+        }
+    }
+}

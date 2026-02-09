@@ -73,6 +73,23 @@ export const BEAD_COLORS = [
     { id: 'forestgreen', name: '森林绿', hex: '#228B22', brand: 'MARD', code: 'M51' },
     { id: 'darkgreen', name: '深绿', hex: '#006400', brand: 'MARD', code: 'M52' },
     { id: 'huntergreen', name: '猎人绿', hex: '#355E3B', brand: 'MARD', code: 'M53' },
+    // 新增灰绿/莎草绿色调
+    { id: 'sagegreen', name: '莎草绿', hex: '#9DC183', brand: 'MARD', code: 'M100' },
+    { id: 'mossgreen', name: '苔藓绿', hex: '#8A9A5B', brand: 'MARD', code: 'M101' },
+    { id: 'olivegreen', name: '橄榄绿', hex: '#6B8E23', brand: 'MARD', code: 'M102' },
+    { id: 'celadon', name: '青瓷绿', hex: '#ACE1AF', brand: 'MARD', code: 'M103' },
+    { id: 'teagreen', name: '茶绿', hex: '#D0F0C0', brand: 'MARD', code: 'M104' },
+    { id: 'ashgreen', name: '灰绿', hex: '#8F9779', brand: 'MARD', code: 'M105' },
+    { id: 'graygreen', name: '灰绿色', hex: '#A7C4A0', brand: 'MARD', code: 'M106' },
+    { id: 'dustygreen', name: '尘土绿', hex: '#8DAA91', brand: 'MARD', code: 'M107' },
+    { id: 'mattgreen', name: '哑光绿', hex: '#76A572', brand: 'MARD', code: 'M108' },
+    { id: 'pistachio', name: '开心果绿', hex: '#93C572', brand: 'MARD', code: 'M109' },
+    { id: 'ferngreen', name: '蕨绿', hex: '#4F7942', brand: 'MARD', code: 'M110' },
+    { id: 'artichoke', name: '洋蓟绿', hex: '#8F9779', brand: 'MARD', code: 'M111' },
+    { id: 'asparagus', name: '芦笋绿', hex: '#87A96B', brand: 'MARD', code: 'M112' },
+    { id: 'camouflage', name: '迷彩绿', hex: '#78866B', brand: 'MARD', code: 'M113' },
+    { id: 'jadite', name: '翡翠绿', hex: '#B5D5B5', brand: 'MARD', code: 'M114' },
+    { id: 'eucalyptus', name: '桉树绿', hex: '#5F8575', brand: 'MARD', code: 'M115' },
 
     // ===== 青色系 =====
     { id: 'mint', name: '薄荷', hex: '#98FF98', brand: 'MARD', code: 'M54' },

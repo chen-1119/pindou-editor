@@ -95,19 +95,20 @@ export function Canvas({
           ctx.fillRect(px + cellSize - gap - 2, py + gap, 2, cellSize - gap * 2);
         }
 
-        // 显示编号
-        if (showNumbers && cellSize >= 8 && pixel.colorId && colorNumberMap && colorNumberMap[pixel.colorId]) {
+        // 显示编号（code如M113）
+        if (showNumbers && cellSize >= 16 && pixel.colorId && colorNumberMap && colorNumberMap[pixel.colorId]) {
           const rgb = pixel.hex ? hexToRgb(pixel.hex) : { r: 128, g: 128, b: 128 };
           const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
           ctx.fillStyle = brightness > 128 ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,1)';
 
-          // 动态字体大小，确保在小格子里也能勉强看清
-          const fontSize = Math.max(6, Math.min(cellSize * 0.6, 16));
+          const label = colorNumberMap[pixel.colorId];
+          // 根据code长度动态调整字体大小（M113是4字符）
+          const baseFontSize = Math.max(6, Math.min(cellSize * 0.35, 12));
+          const fontSize = label.length > 3 ? baseFontSize * 0.9 : baseFontSize;
           ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          const label = colorNumberMap[pixel.colorId].toString();
           ctx.fillText(label, px + cellSize / 2, py + cellSize / 2 + 1); // +1 微调垂直居中
         }
       }
