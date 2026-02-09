@@ -1,7 +1,0 @@
-{
-    "container": {
-        "type": "static",
-        "build": "npm install && npm run build",
-        "output": "dist"
-    }
-}
