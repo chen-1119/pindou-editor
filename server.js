@@ -5,6 +5,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+console.log("Wake up Zeabur! Starting deployment...");
+
 const port = process.env.PORT || 8080;
 const distPath = path.join(__dirname, 'dist');
 
